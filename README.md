@@ -8,6 +8,29 @@ Preferably, solutions should be provided as a link to a public GitHub repository
 
 # Setup
 
+## Environment Setup
+
+1. **Create virtual environment:**
+   ```bash
+   python -m venv .venv
+   ```
+
+2. **Activate virtual environment:**
+   - **Windows (PowerShell):**
+     ```powershell
+     .venv\Scripts\Activate.ps1
+     ```
+   - **Linux/macOS:**
+     ```bash
+     source .venv/bin/activate
+     ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
 
 # Datasets Preparation
 
