@@ -30,9 +30,24 @@ Preferably, solutions should be provided as a link to a public GitHub repository
    pip install -r requirements.txt
    ```
 
+4. **Verify virtual environment is active:**
+   - You should see `(.venv)` prefix in your terminal prompt
+
 ---
 
 # Datasets Preparation
+
+## Download wikitext-2-raw-v1
+
+Run the download script:
+```bash
+python download_dataset.py
+```
+
+This will:
+- Create `data/` directory if not exists
+- Download wikitext-2-raw-v1 dataset from Hugging Face
+- Save to `data/wikitext-2-raw-v1/`
 
 
 # Demo

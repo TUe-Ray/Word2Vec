@@ -17,3 +17,6 @@ data/
 .ipynb_checkpoints/
 
 *.log
+
+# File
+test_preprocessing.py
