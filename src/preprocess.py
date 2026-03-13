@@ -68,13 +68,16 @@ def encode_sentences(sentences: List[List[str]], vocab: Dict, unk_token: str = '
     """
     word2id = vocab['word2id']
     unk_id = word2id[unk_token] # =1
-    encode_sentences = []
+    encoded_sentences = []
+
     for sentence in sentences:
+        encoded_sentence = []
         for token in sentence:
             if token not in word2id:
-                encode_sentences.append(unk_id)
+                encoded_sentence.append(unk_id)
             else:
-                encode_sentences.append(word2id[token])
-    return encode_sentences
+                encoded_sentence.append(word2id[token])
+        encoded_sentences.append(encoded_sentence)
+    return encoded_sentences
     
 
