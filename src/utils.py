@@ -1,5 +1,10 @@
 import json
+import csv
 from pathlib import Path
+from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
 from datasets import load_from_disk
 from typing import List, Dict
 
@@ -78,3 +83,101 @@ def load_vocab(filepath: str = 'data/vocab.json') -> Dict:
     vocab_data['id2word'] = {int(k): v for k, v in vocab_data['id2word'].items()}
     
     return vocab_data
+
+
+def save_run_config(run_dir: Path, run_config: Dict[str, Any]) -> Path:
+    """
+    Save training run configuration to JSON.
+
+    Args:
+        run_dir: Directory for the current training run
+        run_config: Hyperparameters and run metadata
+
+    Returns:
+        Path to the saved config file
+    """
+    run_dir = Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    config_path = run_dir / "run_config.json"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(run_config, f, indent=2, ensure_ascii=False)
+
+    print(f"Run config saved to {config_path}")
+    return config_path
+
+
+def save_training_records(run_dir: Path, loss_records: List[Dict[str, Any]], global_step: int) -> Dict[str, Path]:
+    """
+    Save loss history CSV, training loss plot, and run summary JSON.
+
+    Args:
+        run_dir: Directory for the current training run
+        loss_records: List of per-step loss entries
+        global_step: Last global training step
+
+    Returns:
+        Dictionary containing output artifact paths
+    """
+    run_dir = Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    loss_csv_path = run_dir / "loss_history.csv"
+    plot_path = run_dir / "training_loss.png"
+    summary_path = run_dir / "run_summary.json"
+
+    with open(loss_csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["global_step", "epoch", "step_in_epoch", "loss"])
+        writer.writeheader()
+        writer.writerows(loss_records)
+
+    if loss_records:
+        steps = [row["global_step"] for row in loss_records]
+        losses = [row["loss"] for row in loss_records]
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(steps, losses, label="Batch loss", alpha=0.5, linewidth=1)
+
+        smooth_window = min(200, len(losses))
+        if smooth_window >= 5:
+            kernel = np.ones(smooth_window, dtype=np.float64) / smooth_window
+            smooth_losses = np.convolve(losses, kernel, mode="valid")
+            smooth_steps = steps[smooth_window - 1 :]
+            plt.plot(smooth_steps, smooth_losses, label=f"Moving average ({smooth_window})", linewidth=2)
+
+        plt.title("Training Loss Curve")
+        plt.xlabel("Global step")
+        plt.ylabel("Loss")
+        plt.grid(alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200)
+        plt.close()
+
+        summary = {
+            "total_steps": global_step,
+            "num_records": len(loss_records),
+            "final_loss": loss_records[-1]["loss"],
+            "best_loss": min(row["loss"] for row in loss_records),
+        }
+    else:
+        summary = {
+            "total_steps": global_step,
+            "num_records": 0,
+            "final_loss": None,
+            "best_loss": None,
+        }
+
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
+
+    print(f"Loss history saved to {loss_csv_path}")
+    print(f"Run summary saved to {summary_path}")
+    if loss_records:
+        print(f"Training plot saved to {plot_path}")
+
+    return {
+        "loss_csv": loss_csv_path,
+        "plot": plot_path,
+        "summary": summary_path,
+    }
