@@ -1,7 +1,14 @@
 from datetime import datetime
 from pathlib import Path
+import sys
 import numpy as np
 from tqdm import tqdm
+
+# Ensure project-root imports work even when executed from a different cwd.
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.preprocess import normalize_text, tokenize, build_vocab, encode_sentences
 from src.utils import load_wikitext_raw, save_run_config, save_training_records
 from src.dataset import generate_pairs, SkipGramBatchGenerator
@@ -11,7 +18,7 @@ from src.model import SkipGramModel
 hyperparams = {
     "num_epochs": 5,
     "max_vocab_size": 50000,
-    "embedding_dim": 100,
+    "embedding_dim": 1024,
     "min_freq": 2,
     "batch_size": 256,
     "num_negative_samples": 15,
