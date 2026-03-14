@@ -1,55 +1,109 @@
-# JetBrains Internship Task: Hallucination Detection Task #1
+# Word2Vec (NumPy) - JetBrains Task #1
 
-## Task desciption
-Implement the core training loop of word2vec in pure NumPy (no PyTorch / TensorFlow or other ML frameworks). The applicant is free to choose any suitable text dataset. The task is to implement the optimization procedure (forward pass, loss, gradients, and parameter updates) for a standard word2vec variant (e.g. skip-gram with negative sampling or CBOW).
+This project implements **Skip-gram with Negative Sampling (SGNS)** in **pure NumPy**.
+No deep learning frameworks are used in the training loop.
 
-The submitted solution should be fully understood by the applicant: during follow-up we will ask questions about the ideas behind word2vec, the code, gradient derivations, and possible alternative implementations or optimizations.
-Preferably, solutions should be provided as a link to a public GitHub repository.
+## What Is Implemented
 
-# Setup
+- Data loading from `wikitext-2-raw-v1`
+- Text normalization and tokenization
+- Vocabulary building and ID encoding
+- Skip-gram pair generation
+- Negative sampling with unigram^0.75 distribution
+- Full SGNS optimization loop:
+   - forward pass
+   - loss computation
+   - backward gradients
+   - parameter updates (`np.add.at` for repeated indices)
+- Checkpoint saving (`W_center.npy`, `W_context.npy`) and training records
 
 ## Environment Setup
 
-1. **Create virtual environment:**
-   ```bash
-   python -m venv .venv
-   ```
+1. Create and activate an environment.
 
-2. **Activate virtual environment:**
-   - **Windows (PowerShell):**
-     ```powershell
-     .venv\Scripts\Activate.ps1
-     ```
-   - **Linux/macOS:**
-     ```bash
-     source .venv/bin/activate
-     ```
+Windows (PowerShell):
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+Linux/macOS:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
 
-4. **Verify virtual environment is active:**
-   - You should see `(.venv)` prefix in your terminal prompt
+2. Install dependencies.
+```bash
+pip install -r requirements.txt
+```
 
----
+## Dataset Download
 
-# Datasets Preparation
-
-## Download wikitext-2-raw-v1
-
-Run the download script:
+Download and cache WikiText-2 raw dataset:
 ```bash
 python download_dataset.py
 ```
 
-This will:
-- Create `data/` directory if not exists
-- Download wikitext-2-raw-v1 dataset from Hugging Face
-- Save to `data/wikitext-2-raw-v1/`
+Expected output folder:
+- `data/wikitext-2-raw-v1/`
 
+## Training
 
-# Demo
+Run training from the project root:
+```bash
+python train.py
+```
 
-# Training
+Main hyperparameters are defined in `train.py` under `hyperparams`.
+
+## Outputs
+
+Each run creates a timestamped folder under `checkpoints/`:
+
+- `checkpoints/<run_id>/run_config.json`
+   - Stores training hyperparameters and checkpoint interval.
+- `checkpoints/<run_id>/latest/W_center.npy`
+- `checkpoints/<run_id>/latest/W_context.npy`
+   - Periodically updated checkpoint.
+- `checkpoints/<run_id>/final/W_center.npy`
+- `checkpoints/<run_id>/final/W_context.npy`
+   - Final trained embeddings.
+- `checkpoints/<run_id>/loss_history.csv`
+   - Per-step training loss.
+- `checkpoints/<run_id>/training_loss.png`
+   - Loss curve visualization.
+- `checkpoints/<run_id>/run_summary.json`
+   - Final loss, best loss, total steps.
+
+## Load Embeddings
+
+Example:
+```python
+from src.model import SkipGramModel
+
+model = SkipGramModel(vocab_size=50000, embedding_dim=1024)
+model.load_embeddings("checkpoints/<run_id>/final")
+
+# Input (center) embeddings
+W_in = model.W_center
+# Output (context) embeddings
+W_out = model.W_context
+```
+
+Note: `vocab_size` and `embedding_dim` passed to `SkipGramModel` must match the saved checkpoint.
+
+## Known Limitations
+
+- No subsampling of frequent words yet.
+- No learning-rate scheduling (constant LR only).
+- No intrinsic evaluation pipeline yet (e.g., word similarity/analogy); `src/eval.py` is currently empty.
+- Training is implemented for clarity and correctness, not maximum speed.
+- The current script reads all generated skip-gram pairs in memory.
+
+## Quick Sanity Check
+
+Run preprocessing check script:
+```bash
+python test_preprocessing.py
+```

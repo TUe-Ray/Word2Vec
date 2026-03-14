@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import numpy as np
-import os
 
 
 class SkipGramModel:
@@ -56,12 +55,12 @@ class SkipGramModel:
 
         score_pos = np.sum(v_c * u_o, axis=1) # shape: (B,)
         score_neg = np.sum(u_neg * v_c[:, None, :], axis=2)  # shape: (B, K)
-        sigmoid_pos = self.sigmoid(score_pos+ 1e-12)  # add small epsilon to prevent log(0)
-        sigmoid_neg = self.sigmoid(score_neg+ 1e-12)  # shape: (B, num_negatives)
+        sigmoid_pos = self.sigmoid(score_pos)  # shape: (B,)
+        sigmoid_neg = self.sigmoid(score_neg)  # shape: (B, K)
 
-
-        loss_pos = -np.log(sigmoid_pos + 1e-12)                     # (B,)
-        loss_neg = -np.sum(np.log(self.sigmoid(-score_neg) + 1e-12), axis=1)  # (B,)
+        # Use stable log-sigmoid to avoid overflow/underflow in log and exp.
+        loss_pos = -self.log_sigmoid(score_pos)                     # (B,)
+        loss_neg = -np.sum(self.log_sigmoid(-score_neg), axis=1)    # (B,)
         loss = np.mean(loss_pos + loss_neg)   # scalar        # store cache for backward pass
         cache = {
             'center_ids': center_ids,
@@ -149,5 +148,16 @@ class SkipGramModel:
         print(f"Context embeddings saved to {w_context_path}")
 
     def sigmoid(self, x):
-        x = np.clip(x, -10, 10)
-        return 1.0 / (1.0 + np.exp(-x))
+        # Stable sigmoid implementation that avoids overflow in exp.
+        x = np.asarray(x)
+        out = np.empty_like(x, dtype=np.float64)
+        pos = x >= 0
+        out[pos] = 1.0 / (1.0 + np.exp(-x[pos]))
+        exp_x = np.exp(x[~pos])
+        out[~pos] = exp_x / (1.0 + exp_x)
+        return out.astype(np.float32, copy=False)
+
+    def log_sigmoid(self, x):
+        # log(sigmoid(x)) = -logaddexp(0, -x), numerically stable.
+        x = np.asarray(x, dtype=np.float64)
+        return -np.logaddexp(0.0, -x)
