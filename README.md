@@ -57,24 +57,38 @@ python train.py
 
 Main hyperparameters are defined in `train.py` under `hyperparams`.
 
+To load start weights from an existing checkpoint, edit these values in `train.py`:
+
+- `start_weight_run_id` (the checkpoint folder name, e.g. `20260314_191627`)
+- `start_weight_subdir` (`latest` or `final`)
+
+If the folder or files are missing, training automatically falls back to fresh random initialization.
+
 ## Outputs
 
 Each run creates a timestamped folder under `checkpoints/`:
 
 - `checkpoints/<run_id>/run_config.json`
-   - Stores training hyperparameters and checkpoint interval.
-- `checkpoints/<run_id>/latest/W_center.npy`
-- `checkpoints/<run_id>/latest/W_context.npy`
-   - Periodically updated checkpoint.
-- `checkpoints/<run_id>/final/W_center.npy`
-- `checkpoints/<run_id>/final/W_context.npy`
-   - Final trained embeddings.
+   Stores training hyperparameters and checkpoint interval.
+
+- `checkpoints/<run_id>/latest/`
+   - `W_center.npy`
+   - `W_context.npy`
+   Periodically updated checkpoint.
+
+- `checkpoints/<run_id>/final/`
+   - `W_center.npy`
+   - `W_context.npy`
+   Final trained embeddings.
+
 - `checkpoints/<run_id>/loss_history.csv`
-   - Per-step training loss.
+   Per-step training loss.
+
 - `checkpoints/<run_id>/training_loss.png`
-   - Loss curve visualization.
+   Loss curve visualization.
+
 - `checkpoints/<run_id>/run_summary.json`
-   - Final loss, best loss, total steps.
+   Final loss, best loss, total steps.
 
 ## Load Embeddings
 
@@ -101,9 +115,3 @@ Note: `vocab_size` and `embedding_dim` passed to `SkipGramModel` must match the 
 - Training is implemented for clarity and correctness, not maximum speed.
 - The current script reads all generated skip-gram pairs in memory.
 
-## Quick Sanity Check
-
-Run preprocessing check script:
-```bash
-python test_preprocessing.py
-```
