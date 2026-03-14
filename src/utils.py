@@ -1,12 +1,37 @@
 import json
 import csv
 from pathlib import Path
+from datetime import datetime
 from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 from datasets import load_from_disk
 from typing import List, Dict
+
+
+def create_run_directories(checkpoint_root: Path) -> tuple[Path, Path, Path]:
+    """Create a unique run directory and return (run_dir, latest_dir, final_dir)."""
+    checkpoint_root = Path(checkpoint_root)
+    run_id_base = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = checkpoint_root / run_id_base
+    suffix = 1
+
+    while run_dir.exists():
+        run_dir = checkpoint_root / f"{run_id_base}_{suffix:02d}"
+        suffix += 1
+
+    latest_ckpt_dir = run_dir / "latest"
+    final_ckpt_dir = run_dir / "final"
+    run_dir.mkdir(parents=True, exist_ok=False)
+    return run_dir, latest_ckpt_dir, final_ckpt_dir
+
+
+def resolve_start_weight_dir(checkpoint_root: Path, run_id: str | None, subdir: str) -> Path | None:
+    """Return checkpoint directory for warm start, or None when no run id is provided."""
+    if not run_id:
+        return None
+    return Path(checkpoint_root) / run_id / subdir
 
 # General utility functions for dataset loading, vocabulary saving/loading, etc.
 

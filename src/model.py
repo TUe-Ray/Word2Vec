@@ -4,10 +4,9 @@ import numpy as np
 
 
 class SkipGramModel:
-    def __init__(self, vocab_size, embedding_dim, activation_type='sigmoid'):
+    def __init__(self, vocab_size, embedding_dim'):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
-        self.activation_type = activation_type  
 
         # Common Word2Vec init: small near-zero input vectors and zero output vectors.
         bound = 0.5 / embedding_dim

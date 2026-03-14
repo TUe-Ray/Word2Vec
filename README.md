@@ -57,12 +57,20 @@ python train.py
 
 Main hyperparameters are defined in `train.py` under `hyperparams`.
 
-To load start weights from an existing checkpoint, edit these values in `train.py`:
+To load start weights from an existing checkpoint, pass a run id via CLI:
 
-- `start_weight_run_id` (the checkpoint folder name, e.g. `20260314_191627`)
-- `start_weight_subdir` (`latest` or `final`)
+```bash
+python train.py --start-weight-run-id 20260314_191627
+```
 
-If the folder or files are missing, training automatically falls back to fresh random initialization.
+Optional: choose checkpoint type (`latest` or `final`):
+
+```bash
+python train.py --start-weight-run-id 20260314_191627 --start-weight-subdir final
+```
+
+If `--start-weight-run-id` is not provided, training starts from fresh random initialization.
+If the folder or files are missing, training also falls back to fresh random initialization.
 
 ## Outputs
 

@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 from pathlib import Path
 import sys
@@ -13,6 +14,27 @@ from src.preprocess import normalize_text, tokenize, build_vocab, encode_sentenc
 from src.utils import load_wikitext_raw, save_run_config, save_training_records
 from src.dataset import generate_pairs, SkipGramBatchGenerator
 from src.model import SkipGramModel
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train Skip-gram with Negative Sampling")
+    parser.add_argument(
+        "--start-weight-run-id",
+        type=str,
+        default=None,
+        help="Checkpoint run id to load as start weights (for example: 20260314_191627)",
+    )
+    parser.add_argument(
+        "--start-weight-subdir",
+        type=str,
+        default="latest",
+        choices=["latest", "final"],
+        help="Checkpoint subdirectory to load from when --start-weight-run-id is provided",
+    )
+    return parser.parse_args()
+
+
+args = parse_args()
 
 # training parameters
 hyperparams = {
@@ -32,6 +54,8 @@ hyperparams = {
 # checkpoint settings
 checkpoint_every = 500
 checkpoint_root = Path("checkpoints")
+start_weight_run_id = args.start_weight_run_id
+start_weight_subdir = args.start_weight_subdir
 
 # reproducibility
 np.random.seed(hyperparams["seed"])
@@ -48,7 +72,17 @@ latest_ckpt_dir = run_dir / "latest"
 final_ckpt_dir = run_dir / "final"
 run_dir.mkdir(parents=True, exist_ok=False)
 
-run_config = {**hyperparams, "checkpoint_every": checkpoint_every}
+start_weight_dir = None
+if start_weight_run_id:
+    start_weight_dir = checkpoint_root / start_weight_run_id / start_weight_subdir
+
+run_config = {
+    **hyperparams,
+    "checkpoint_every": checkpoint_every,
+    "start_weight_run_id": start_weight_run_id,
+    "start_weight_subdir": start_weight_subdir,
+    "start_weight_dir": str(start_weight_dir) if start_weight_dir is not None else None,
+}
 save_run_config(run_dir, run_config)
 
 print(f"Run folder: {run_dir}")
@@ -79,9 +113,21 @@ batch_gen = SkipGramBatchGenerator(
 # initialize the Skip-Gram model
 model = SkipGramModel(
     vocab_size=vocab['vocab_size'],
-    embedding_dim=hyperparams["embedding_dim"],
-    activation_type='sigmoid',
+    embedding_dim=hyperparams["embedding_dim"]
 )
+if start_weight_dir is not None and start_weight_dir.exists():
+    try:
+        model.load_embeddings(start_weight_dir)
+        print(f"Loaded start weights from: {start_weight_dir}")
+    except (FileNotFoundError, ValueError) as err:
+        print(f"Warning: could not load start weights from {start_weight_dir}: {err}")
+        print("Proceeding with fresh random initialization.")
+else:
+    if start_weight_dir is None:
+        print("No --start-weight-run-id provided. Proceeding with fresh random initialization.")
+    else:
+        print(f"Start weight directory not found: {start_weight_dir}")
+        print("Proceeding with fresh random initialization.")
 print(f"Model initialized with vocab size {model.vocab_size} and embedding dimension {model.embedding_dim}")
 print("start model training")
 
