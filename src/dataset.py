@@ -1,5 +1,5 @@
 import numpy as np
-import random
+
 def generate_pairs(sentences, window_size):
     """
     Input:  encoded_sentences = [[2, 3, 4, 5], [10, 11, 12], ...]
@@ -76,12 +76,12 @@ class SkipGramBatchGenerator:
         self.shuffle = shuffle
         
         # build negative sampling distribution
-        self.probs = self._build_negative_sampling_dist()
+        self.probs = self._build_negative_sampling_distribution()
 
         self.indices = np.arange(len(self.pairs))
         self.ptr = 0
 
-    def _build_negative_sampling_dist(self):
+    def _build_negative_sampling_distribution(self):
         freq_by_id = np.ones(self.vocab['vocab_size'], dtype=np.float64)
         for w, idx in self.vocab['word2id'].items():
             freq_by_id[idx] = float(self.vocab['word_freq'].get(w, 1.0))
@@ -130,6 +130,36 @@ class SkipGramBatchGenerator:
             np.array(pos_contexts, dtype=np.int64),       # shape: (B,)
             np.array(neg_contexts, dtype=np.int64),       # shape: (B, K)
         )
+    
+    def _sample_negatives(self, context_id):
+        """
+        Sample K negative ids with unigram^0.75 distribution (already in self.probs),
+        excluding the positive context id and avoiding duplicates in one sample.
+        """
+        # valid ids: probability > 0 (PAD/UNK already zeroed out)
+        candidate_ids = np.flatnonzero(self.probs > 0)
+
+        # exclude true positive context
+        candidate_ids = candidate_ids[candidate_ids != context_id]
+
+        if candidate_ids.size == 0:
+            raise ValueError(
+                "No valid negative candidates available after filtering."
+            )
+
+        # re-normalize on the filtered candidate set
+        candidate_probs = self.probs[candidate_ids]
+        candidate_probs = candidate_probs / candidate_probs.sum()
+
+        # SGNS commonly samples with replacement, so duplicates are allowed.
+        neg_ids = self.rng.choice(
+            candidate_ids,
+            size=self.num_negatives,
+            replace=True,
+            p=candidate_probs,
+        )
+        return neg_ids.tolist()
+    
 
     def __len__(self):
         return (len(self.pairs) + self.batch_size - 1) // self.batch_size

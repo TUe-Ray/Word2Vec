@@ -1,0 +1,14 @@
+{
+  "num_epochs": 5,
+  "max_vocab_size": 50000,
+  "embedding_dim": 100,
+  "min_freq": 2,
+  "batch_size": 256,
+  "num_negative_samples": 15,
+  "norm_factor": 0.75,
+  "seed": 42,
+  "learning_rate": 0.1,
+  "window_size": 2,
+  "split": "train",
+  "checkpoint_every": 500
+}
