@@ -98,7 +98,10 @@ Each run creates a timestamped folder under `checkpoints/`:
 - `checkpoints/<run_id>/run_summary.json`
    Final loss, best loss, total steps.
 
-## Load Embeddings
+## Load Saved Embeddings (for Eval/Inference)
+
+This section is for loading embeddings after training (for evaluation or analysis).
+For warm-start training, use the CLI flags in the **Training** section.
 
 Example:
 ```python
