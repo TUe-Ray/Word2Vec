@@ -15,6 +15,7 @@ from src.utils import (
     load_wikitext_raw,
     resolve_start_weight_dir,
     save_run_config,
+    save_vocab,
     save_training_records,
 )
 from src.dataset import generate_pairs, SkipGramBatchGenerator
@@ -165,6 +166,8 @@ def main():
     print(f"Run folder: {run_dir}")
 
     vocab, pairs = prepare_training_data(hyperparams)
+    run_vocab_path = run_dir / "vocab.json"
+    save_vocab(vocab, str(run_vocab_path))
     batch_gen = build_batch_generator(pairs, vocab, hyperparams)
 
     model = SkipGramModel(
