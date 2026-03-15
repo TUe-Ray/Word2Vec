@@ -1,7 +1,6 @@
 # Word2Vec (NumPy) - JetBrains Task #1
 
-This project implements **Skip-gram with Negative Sampling (SGNS)** in **pure NumPy**.
-No deep learning frameworks are used in the training loop.
+This project implements **Skip-gram with Negative Sampling (SGNS)** for internship programming task.
 
 ## What Is Implemented
 
@@ -14,10 +13,21 @@ No deep learning frameworks are used in the training loop.
    - forward pass
    - loss computation
    - backward gradients
-   - parameter updates (`np.add.at` for repeated indices)
+   - parameter updates
 - Checkpoint saving (`W_center.npy`, `W_context.npy`) and training records
 
-## Environment Setup
+## Get Started
+
+### Quick Start
+
+Clone the repository and navigate into it:
+
+```bash
+git clone https://github.com/your-username/Word2Vec.git
+cd Word2Vec
+```
+
+### Installation
 
 1. Create and activate an environment.
 
@@ -38,7 +48,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Dataset Download
+### Prepare Dataset
 
 Download and cache WikiText-2 raw dataset:
 ```bash
