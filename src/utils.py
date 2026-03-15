@@ -132,7 +132,12 @@ def save_run_config(run_dir: Path, run_config: Dict[str, Any]) -> Path:
     return config_path
 
 
-def save_training_records(run_dir: Path, loss_records: List[Dict[str, Any]], global_step: int) -> Dict[str, Path]:
+def save_training_records(
+    run_dir: Path,
+    loss_records: List[Dict[str, Any]],
+    global_step: int,
+    validation_loss_records: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Path]:
     """
     Save loss history CSV, training loss plot, and run summary JSON.
 
@@ -148,13 +153,20 @@ def save_training_records(run_dir: Path, loss_records: List[Dict[str, Any]], glo
     run_dir.mkdir(parents=True, exist_ok=True)
 
     loss_csv_path = run_dir / "loss_history.csv"
+    validation_csv_path = run_dir / "validation_loss_history.csv"
     plot_path = run_dir / "training_loss.png"
     summary_path = run_dir / "run_summary.json"
+    validation_loss_records = validation_loss_records or []
 
     with open(loss_csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["global_step", "epoch", "step_in_epoch", "loss"])
         writer.writeheader()
         writer.writerows(loss_records)
+
+    with open(validation_csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["global_step", "epoch", "step_in_epoch", "loss"])
+        writer.writeheader()
+        writer.writerows(validation_loss_records)
 
     if loss_records:
         steps = [row["global_step"] for row in loss_records]
@@ -170,6 +182,18 @@ def save_training_records(run_dir: Path, loss_records: List[Dict[str, Any]], glo
             smooth_steps = steps[smooth_window - 1 :]
             plt.plot(smooth_steps, smooth_losses, label=f"Moving average ({smooth_window})", linewidth=2)
 
+        if validation_loss_records:
+            validation_steps = [row["global_step"] for row in validation_loss_records]
+            validation_losses = [row["loss"] for row in validation_loss_records]
+            plt.plot(
+                validation_steps,
+                validation_losses,
+                label="Validation loss",
+                linewidth=2,
+                marker="o",
+                markersize=3,
+            )
+
         plt.title("Training Loss Curve")
         plt.xlabel("Global step")
         plt.ylabel("Loss")
@@ -181,28 +205,36 @@ def save_training_records(run_dir: Path, loss_records: List[Dict[str, Any]], glo
 
         summary = {
             "total_steps": global_step,
-            "num_records": len(loss_records),
-            "final_loss": loss_records[-1]["loss"],
-            "best_loss": min(row["loss"] for row in loss_records),
+            "num_train_records": len(loss_records),
+            "num_validation_records": len(validation_loss_records),
+            "final_train_loss": loss_records[-1]["loss"],
+            "best_train_loss": min(row["loss"] for row in loss_records),
+            "final_validation_loss": validation_loss_records[-1]["loss"] if validation_loss_records else None,
+            "best_validation_loss": min(row["loss"] for row in validation_loss_records) if validation_loss_records else None,
         }
     else:
         summary = {
             "total_steps": global_step,
-            "num_records": 0,
-            "final_loss": None,
-            "best_loss": None,
+            "num_train_records": 0,
+            "num_validation_records": len(validation_loss_records),
+            "final_train_loss": None,
+            "best_train_loss": None,
+            "final_validation_loss": validation_loss_records[-1]["loss"] if validation_loss_records else None,
+            "best_validation_loss": min(row["loss"] for row in validation_loss_records) if validation_loss_records else None,
         }
 
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
     print(f"Loss history saved to {loss_csv_path}")
+    print(f"Validation loss history saved to {validation_csv_path}")
     print(f"Run summary saved to {summary_path}")
     if loss_records:
         print(f"Training plot saved to {plot_path}")
 
     return {
         "loss_csv": loss_csv_path,
+        "validation_csv": validation_csv_path,
         "plot": plot_path,
         "summary": summary_path,
     }

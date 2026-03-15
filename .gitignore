@@ -21,3 +21,4 @@ data/
 # File
 test_preprocessing.py
 checkpoints/
+codex_outputs/
