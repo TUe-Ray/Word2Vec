@@ -4,9 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
-from datasets import load_from_disk
 from typing import List, Dict
 
 
@@ -33,6 +31,40 @@ def resolve_start_weight_dir(checkpoint_root: Path, run_id: str | None, subdir: 
         return None
     return Path(checkpoint_root) / run_id / subdir
 
+
+def build_run_config(
+    hyperparams: Dict[str, Any],
+    checkpoint_every: int,
+    start_weight_run_id: str | None,
+    start_weight_subdir: str,
+    start_weight_dir: Path | None,
+) -> Dict[str, Any]:
+    return {
+        **hyperparams,
+        "checkpoint_every": checkpoint_every,
+        "start_weight_run_id": start_weight_run_id,
+        "start_weight_subdir": start_weight_subdir,
+        "start_weight_dir": str(start_weight_dir) if start_weight_dir is not None else None,
+    }
+
+
+def maybe_load_start_weights(model, start_weight_dir: Path | None) -> None:
+    if start_weight_dir is None:
+        print("No --start-weight-run-id provided. Proceeding with fresh random initialization.")
+        return
+
+    if not start_weight_dir.exists():
+        print(f"Start weight directory not found: {start_weight_dir}")
+        print("Proceeding with fresh random initialization.")
+        return
+
+    try:
+        model.load_embeddings(start_weight_dir)
+        print(f"Loaded start weights from: {start_weight_dir}")
+    except (FileNotFoundError, ValueError) as err:
+        print(f"Warning: could not load start weights from {start_weight_dir}: {err}")
+        print("Proceeding with fresh random initialization.")
+
 # General utility functions for dataset loading, vocabulary saving/loading, etc.
 
 def load_wikitext_raw(split: str = 'train') -> List[str]:
@@ -50,6 +82,8 @@ def load_wikitext_raw(split: str = 'train') -> List[str]:
         raise FileNotFoundError(f"Dataset not found at {dataset_path}")
     
     try:
+        from datasets import load_from_disk
+
         ds = load_from_disk(str(dataset_path))
         if split not in ds:
             raise ValueError(f"Split '{split}' not found. Available splits: {list(ds.keys())}")
@@ -169,6 +203,8 @@ def save_training_records(
         writer.writerows(validation_loss_records)
 
     if loss_records:
+        import matplotlib.pyplot as plt
+
         steps = [row["global_step"] for row in loss_records]
         losses = [row["loss"] for row in loss_records]
 
