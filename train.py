@@ -9,7 +9,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.preprocess import normalize_text, tokenize, build_vocab, encode_sentences
+from src.preprocess import (
+    normalize_text,
+    tokenize,
+    build_vocab,
+    subsample_frequent_words,
+    encode_sentences,
+)
 from src.utils import (
     create_run_directories,
     load_wikitext_raw,
@@ -22,6 +28,21 @@ from src.dataset import generate_pairs, SkipGramBatchGenerator
 from src.model import SkipGramModel
 
 
+
+DEFAULT_HYPERPARAMS = {
+    "num_epochs": 5,
+    "max_vocab_size": 10000,
+    "embedding_dim": 100,
+    "min_freq": 5,
+    "batch_size": 256,
+    "num_negative_samples": 5,
+    "norm_factor": 0.75,
+    "seed": 42,
+    "learning_rate": 0.05,
+    "window_size": 5,
+    "subsample_threshold": 1e-5,
+    "split": "train",
+}
 def parse_args():
     parser = argparse.ArgumentParser(description="Train Skip-gram with Negative Sampling")
     parser.add_argument(
@@ -40,19 +61,6 @@ def parse_args():
     return parser.parse_args()
 
 
-DEFAULT_HYPERPARAMS = {
-    "num_epochs": 5,
-    "max_vocab_size": 50000,
-    "embedding_dim": 1024,
-    "min_freq": 2,
-    "batch_size": 256,
-    "num_negative_samples": 15,
-    "norm_factor": 0.75,
-    "seed": 42,
-    "learning_rate": 0.1,
-    "window_size": 2,
-    "split": "train",
-}
 
 def build_run_config(hyperparams, checkpoint_every, start_weight_run_id, start_weight_subdir, start_weight_dir):
     return {
@@ -72,7 +80,20 @@ def prepare_training_data(hyperparams):
         min_freq=hyperparams["min_freq"],
         max_vocab=hyperparams["max_vocab_size"],
     )
-    encoded_sentences = encode_sentences(sentences, vocab)
+    subsampled_sentences, subsample_stats = subsample_frequent_words(
+        sentences,
+        vocab,
+        threshold=hyperparams.get("subsample_threshold", 0.0),
+        seed=hyperparams["seed"],
+    )
+    print(
+        "Subsampling stats: "
+        f"tokens {subsample_stats['tokens_before']} -> {subsample_stats['tokens_after']} "
+        f"(dropped {subsample_stats['dropped_tokens']}, "
+        f"{subsample_stats['drop_ratio']:.2%}), "
+        f"sentences {subsample_stats['sentences_before']} -> {subsample_stats['sentences_after']}"
+    )
+    encoded_sentences = encode_sentences(subsampled_sentences, vocab)
     pairs = generate_pairs(encoded_sentences, window_size=hyperparams["window_size"])
     return vocab, pairs
 
@@ -178,22 +199,38 @@ def main():
 
     print(f"Model initialized with vocab size {model.vocab_size} and embedding dimension {model.embedding_dim}")
     print("start model training")
+    loss_records = []
+    global_step = 0
+    interrupted = False
 
-    loss_records, global_step = train_model(
-        model=model,
-        batch_gen=batch_gen,
-        hyperparams=hyperparams,
-        checkpoint_every=checkpoint_every,
-        latest_ckpt_dir=latest_ckpt_dir,
-    )
+    try:
+        loss_records, global_step = train_model(
+            model=model,
+            batch_gen=batch_gen,
+            hyperparams=hyperparams,
+            checkpoint_every=checkpoint_every,
+            latest_ckpt_dir=latest_ckpt_dir,
+        )
+    except KeyboardInterrupt:
+        interrupted = True
+        print("\nTraining interrupted by user. Saving partial progress...")
+    finally:
+        # Always persist weights and records so progress is not lost on interruption.
+        model.save_embeddings(latest_ckpt_dir)
+        model.save_embeddings(final_ckpt_dir)
+        artifacts = save_training_records(run_dir, loss_records, global_step)
 
-    model.save_embeddings(final_ckpt_dir)
-    artifacts = save_training_records(run_dir, loss_records, global_step)
-
-    print(f"Final checkpoint saved: {final_ckpt_dir}")
-    print(f"Loss history saved: {artifacts['loss_csv']}")
-    print(f"Training plot saved: {artifacts['plot']}")
-    print(f"Run summary saved: {artifacts['summary']}")
+        if interrupted:
+            print(f"Partial checkpoint saved (latest): {latest_ckpt_dir}")
+            print(f"Partial checkpoint saved (final): {final_ckpt_dir}")
+            print(f"Partial loss history saved: {artifacts['loss_csv']}")
+            print(f"Partial training plot saved: {artifacts['plot']}")
+            print(f"Partial run summary saved: {artifacts['summary']}")
+        else:
+            print(f"Final checkpoint saved: {final_ckpt_dir}")
+            print(f"Loss history saved: {artifacts['loss_csv']}")
+            print(f"Training plot saved: {artifacts['plot']}")
+            print(f"Run summary saved: {artifacts['summary']}")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import numpy as np
 
 
 class SkipGramModel:
-    def __init__(self, vocab_size, embedding_dim'):
+    def __init__(self, vocab_size, embedding_dim):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
 
