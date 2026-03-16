@@ -32,10 +32,25 @@ class SkipGramModel:
         if not w_context_path.exists():
             raise FileNotFoundError(f"Embedding file not found: {w_context_path}")
         
-        self.W_center = np.load(w_center_path)
-        print(f"Center embeddings loaded from {w_center_path} with shape {getattr(self.W_center, 'shape', None)}")
-        self.W_context = np.load(w_context_path)
-        print(f"Context embeddings loaded from {w_context_path} with shape {getattr(self.W_context, 'shape', None)}")
+        loaded_center = np.load(w_center_path)
+        loaded_context = np.load(w_context_path)
+        expected_shape = (self.vocab_size, self.embedding_dim)
+
+        if loaded_center.shape != loaded_context.shape:
+            raise ValueError(
+                "Loaded embedding matrices must have the same shape, "
+                f"got center={loaded_center.shape}, context={loaded_context.shape}"
+            )
+        if loaded_center.shape != expected_shape:
+            raise ValueError(
+                "Loaded embedding shape does not match the current model "
+                f"configuration: expected {expected_shape}, got {loaded_center.shape}"
+            )
+
+        self.W_center = loaded_center
+        print(f"Center embeddings loaded from {w_center_path} with shape {self.W_center.shape}")
+        self.W_context = loaded_context
+        print(f"Context embeddings loaded from {w_context_path} with shape {self.W_context.shape}")
 
 
     def forward(self, center_ids, context_ids, negative_ids):
