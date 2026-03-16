@@ -1,6 +1,6 @@
 # Word2Vec (NumPy) - JetBrains Test Task
 
-This project implements **Skip-gram with Negative Sampling (SGNS)** for internship programming task.
+This project implements **Skip-gram with Negative Sampling (SGNS)** for an internship programming task.
 
 ## What Is Implemented
 
@@ -37,46 +37,57 @@ Important implementation choices:
 - training is done from scratch in pure NumPy
 - `W_center` and `W_context` are both saved for each run
 - `vocab.json` is saved inside each checkpoint run for reproducible evaluation
-- post-training visualization can use `center`, `context`, or their mean; the averaged embedding space is a useful probe, but qualitative checks should still include `W_center`
+- post-training visualization can use `center`, `context`, or their mean, but qualitative checks should still include `W_center`
 
 ## Analysis
 
-This repository is not only a training script; it also documents the debugging process needed to get usable embeddings.
+The experiments can be summarized in three stages.
 
-Two practical observations from the experiments so far:
+### Stage 1: Early Failure Mode
 
-1. **Training without subsampling was noticeably worse.**
-   High-frequency words dominated the embedding space, cosine similarities became inflated, and many unrelated words ended up too close to each other.
+The earliest runs showed that subsampling and vocabulary control were not optional details. Without them, the embedding space was strongly dominated by high-frequency words, which made nearest-neighbor outputs difficult to trust.
 
-2. **Even after adding subsampling, qualitative analysis is still necessary.**
-   Loss can go down while the geometry of the embedding space is still imperfect. In practice, nearest neighbors, analogy probes, PCA/t-SNE, and cosine heatmaps are all useful diagnostics.
+`model_1`, an early no-subsampling run, illustrates this issue clearly. The figure below is included as a diagnostic example rather than as a benchmark result.
 
-The heatmap below comes from a small custom notebook probe using:
+<img src="docs/readme_assets/no_subsampling_tsne_20260314_200105.png" alt="Early no-subsampling t-SNE" width="70%">
+
+Observation:
+
+- the space is not cleanly separated into intuitive semantic groups
+- several words that should feel more distinct still occupy a broadly mixed layout
+- this was an early indication that frequent-word dominance had to be addressed before nearest-neighbor analysis could be trusted
+
+### Stage 2: Improved Pipeline, But Imperfect Semantics
+
+The heatmap below comes from a smaller custom notebook probe created after `subsampling` had already been introduced into the training pipeline. It uses:
 
 - `king`, `queen`, `man`, `woman`
 - `cat`, `dog`
 
-It is useful as an **analysis figure**, not as a final headline result. It shows that the model has already learned some strong local structure, but it also reveals where the embedding space is still not fully aligned with clean semantics.
+It is useful as an **analysis figure**, not as a headline result. It shows that the model has learned some local structure, but it also highlights where semantic organization remains unstable.
 
-What is good here:
+Observation:
 
-- `king` is close to `man`, but not especially close to `queen`
-- `woman` is still relatively close to `man`
-- `cat` and `dog` are extremely close
-
-What is still suspicious:
-
-- `queen` is much closer to `cat/dog` than we would want
-- the royalty cluster is not cleanly separated from the animal pair
-- this suggests the embedding space still mixes broad contextual similarity with semantic similarity
+- `king` is close to `man`, and `cat` is close to `dog`, which suggests that some local structure has been learned
+- however, the royalty cluster is still not cleanly separated from the animal pair
+- this indicates that broad contextual similarity is still interfering with cleaner lexical semantics
 
 <img src="docs/readme_assets/custom_heatmap_notebook.png" alt="Notebook custom cosine heatmap" width="70%">
 
+This stage showed that lower SGNS loss was informative, but not sufficient as a stand-alone quality criterion. Even after the training pipeline improved, nearest neighbors, analogy probes, PCA/t-SNE, and cosine heatmaps remained necessary as complementary diagnostics.
 
-Takeaway:
+### Stage 3: Later Run Comparison
 
-- this model is learning some semantic structure
-- but the space is still partly influenced by broad contextual overlap rather than clean lexical semantics
+
+`model_3`, the most recent completed run in the current training pipeline, improved training stability relative to `model_2`, the earlier warm-start run. Under the newer setup, the model no longer exhibited the same near-constant cosine pattern seen in `model_2`, where many unrelated `W_center` neighbors clustered around `0.999`. This indicates that `model_3` moved away from the clearest collapse-type failure mode and produced a space that is easier to inspect.
+
+However, the qualitative result is still not fully satisfactory. In `model_3`, representative `W_center` neighbors such as `king -> used, series, said, first, known` remained too generic. `model_3` therefore improved stability without fully resolving the tendency toward broad-context or frequency-driven neighborhoods.
+
+Overall conclusion:
+
+- the project now produces embeddings that are easier to inspect and compare than the earliest runs
+- the most recent pipeline is a real improvement over the strongest collapse-type failure modes
+- however, the learned space still shows substantial frequency bias and generic-context bias, so qualitative diagnostics remain necessary
 
 For a short write-up of the training journey, major experiment pivots, and why some runs were useful even when the embeddings were still imperfect, see [docs/training_journey.md](docs/training_journey.md).
 

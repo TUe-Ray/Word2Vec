@@ -1,6 +1,6 @@
 # SGNS Derivation Note
 
-This note explains the implementation in plain language, not paper language.
+This note explains the implementation in plain language rather than formal paper style.
 
 ## 1. What the model is trying to learn
 
@@ -129,8 +129,6 @@ This usually improves:
 - embedding quality
 - nearest-neighbor quality
 
-.
-
 ## 6. Time and memory tradeoffs
 
 This implementation is designed for clarity, not maximum throughput.
@@ -153,9 +151,9 @@ That is the main reason word2vec became practical.
 
 ### Memory tradeoffs
 
-- It store two embedding matrices: `W_center` and `W_context`
+- It stores two embedding matrices: `W_center` and `W_context`
 - each has shape `(vocab_size, embedding_dim)`
-- It also currently materialize all skip-gram pairs in memory before training
+- It also currently materializes all skip-gram pairs in memory before training
 
 That means this code is easy to read, but it is not the most memory-efficient design.
 
@@ -164,6 +162,5 @@ If the dataset gets much larger, better options would be:
 - generate pairs on the fly instead of storing all pairs
 - precompute or cache negative-sampling helpers more aggressively
 - stream data by sentence chunks instead of loading everything into one large pair list
-
 
 

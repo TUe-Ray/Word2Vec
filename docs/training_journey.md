@@ -16,13 +16,13 @@ Some runs were useful because they exposed a failure mode clearly:
 
 The goal of this note is to document that process honestly.
 
-## Example 1: Early No-Subsampling Baseline
+## model_1: Early No-Subsampling Baseline
 
-Reference run:
+Checkpoint folder:
 
 - `checkpoints/20260314_200105_7hr`
 
-This run is a good example of an early baseline that was important mainly because it made the problem visible.
+`model_1` is a good example of an early baseline that was important mainly because it made the problem visible.
 
 Key characteristics from `run_config.json`:
 
@@ -33,27 +33,27 @@ Key characteristics from `run_config.json`:
 - `learning_rate = 0.1`
 - `window_size = 2`
 
-What this run helped reveal:
+What `model_1` helped reveal:
 
 - the embedding space was heavily influenced by very frequent words
 - many words looked too close to each other
 - qualitative plots suggested that the space was not forming clean semantic neighborhoods
 
-This did not make the run useless. On the contrary, it established a clear baseline and showed why subsampling and tighter vocabulary control were needed.
+This did not make `model_1` useless. On the contrary, it established a clear baseline and showed why subsampling and tighter vocabulary control were needed.
 
-Illustrative figure from that run:
+Illustrative figure from `model_1`:
 
 ![No-subsampling t-SNE example](readme_assets/no_subsampling_tsne_20260314_200105.png)
 
 The figure is not presented as a benchmark result. It is included because it captures the practical impression from that stage: the space did not look cleanly organized enough to trust semantic nearest neighbors.
 
-## Example 2: Validation-Aware Warm-Start Experiment
+## model_2: Validation-Aware Warm-Start Experiment
 
-Reference run:
+Checkpoint folder:
 
-- `checkpoints/20260315_231058_bestbest`
+- `checkpoints/20260315_231058`
 
-This run represents a later stage where the pipeline was already more careful:
+`model_2` represents a later stage where the pipeline was already more careful:
 
 - smaller vocabulary
 - subsampling enabled
@@ -71,7 +71,7 @@ Key characteristics from `run_config.json`:
 - validation split and periodic validation loss
 - warm start from `20260315_183537_con/final`
 
-Why this run still mattered even though it was not the final answer:
+Why `model_2` still mattered even though it was not the final answer:
 
 - it showed a more disciplined training setup than the earliest runs
 - it made loss tracking more informative
@@ -79,7 +79,7 @@ Why this run still mattered even though it was not the final answer:
 
 That question turned out to be important. Later analysis showed that SGNS loss and qualitative semantic structure can diverge, and that looking only at the mean of `W_center` and `W_context` can be misleading.
 
-In other words, this run was useful not because it solved the problem completely, but because it made the next problem easier to identify.
+In other words, `model_2` was useful not because it solved the problem completely, but because it made the next problem easier to identify.
 
 ## What Changed Over Time
 
@@ -107,37 +107,27 @@ For that reason, the project now treats both kinds of evidence as important:
 - optimization-oriented evidence such as training and validation SGNS loss
 - representation-oriented evidence such as nearest neighbors, analogy probes, and geometry diagnostics
 
-## Pending Analysis
+## model_3: Later Stable Run
 
-The following runs were added later in the project after the training pipeline had been updated with:
+Checkpoint folder:
 
-- stricter token filtering
-- an explicit learning-rate schedule
-- validation-based best-checkpoint saving
-- a stronger focus on checking `W_center`, not only averaged embeddings
-
-### Run Placeholder: 20260316_015809
+- `checkpoints/20260316_031132`
 
 Status:
 
-- later-stage experiment after the newer training changes
+- completed later-stage run under the newer training pipeline
 
 Small conclusion for now:
 
-- this run belongs to the "new pipeline" stage rather than the early debugging stage
-- it should be judged mainly by validation behavior plus qualitative `W_center` inspection
-- a full conclusion should wait until its saved histories and nearest-neighbor probes are reviewed together
+- compared with `model_2`, `model_3` no longer showed the same collapse-like pattern where many unrelated `W_center` neighbors had cosine values clustered near `0.999`
+- this made the embedding space easier to inspect and suggests that the later preprocessing and training controls improved stability
+- however, representative neighbors remained too generic, which indicates that the model was still strongly influenced by broad contextual overlap and frequency effects
+- the main lesson from `model_3` is that the later pipeline improved the earlier failure mode, but did not yet produce consistently clean semantic neighborhoods
 
-### Run Placeholder: 20260316_015223
+## Closing Note
 
-Status:
+Looking back, these three models are enough to explain most of the project.
 
-- later-stage experiment with the newer schedule and preprocessing choices
+`model_1` made the problem obvious: without enough control over frequent words, the embedding space was difficult to trust. `model_2` showed that adding more structure to training and evaluation made the results easier to reason about, even if the semantic quality was still not where it needed to be. `model_3` was the clearest sign of progress. It no longer looked collapsed in the same way as the earlier experiment, but it also made it clear that generic neighbors were still a real limitation.
 
-Small conclusion for now:
-
-- this run changed several things at once: `window_size`, number of negatives, learning-rate schedule, and token filtering
-- direct comparison of raw SGNS loss against older runs is therefore misleading because the objective scale changed
-- qualitative checks suggest that the run did not collapse in the same way as `20260315_231058_bestbest`, but high-frequency generic words were still too dominant in `W_center`
-- the main lesson from this run is that better engineering around training does not automatically remove frequency bias from the learned space
-
+So the overall story is not that one final run suddenly solved everything. It is that each stage exposed a different part of the problem, and the training pipeline became more interpretable because of that process. By the end, the model was meaningfully better than the early baseline, but qualitative checks were still necessary to understand what had actually improved and what had not.
