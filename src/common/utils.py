@@ -8,8 +8,8 @@ import numpy as np
 from typing import List, Dict
 
 
-def create_run_directories(checkpoint_root: Path) -> tuple[Path, Path, Path]:
-    """Create a unique run directory and return (run_dir, latest_dir, final_dir)."""
+def create_run_directories(checkpoint_root: Path) -> tuple[Path, Path, Path, Path]:
+    """Create a unique run directory and return (run_dir, latest_dir, final_dir, best_dir)."""
     checkpoint_root = Path(checkpoint_root)
     run_id_base = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = checkpoint_root / run_id_base
@@ -21,8 +21,9 @@ def create_run_directories(checkpoint_root: Path) -> tuple[Path, Path, Path]:
 
     latest_ckpt_dir = run_dir / "latest"
     final_ckpt_dir = run_dir / "final"
+    best_ckpt_dir = run_dir / "best"
     run_dir.mkdir(parents=True, exist_ok=False)
-    return run_dir, latest_ckpt_dir, final_ckpt_dir
+    return run_dir, latest_ckpt_dir, final_ckpt_dir, best_ckpt_dir
 
 
 def resolve_start_weight_dir(checkpoint_root: Path, run_id: str | None, subdir: str) -> Path | None:

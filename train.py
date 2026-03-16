@@ -28,20 +28,21 @@ from src.train.trainer import PartialTrainingInterrupt, train_model
 
 
 DEFAULT_HYPERPARAMS = {
-    "num_epochs": 10,
-    "max_vocab_size": 20000,
-    "embedding_dim": 200,
+    "num_epochs": 4,
+    "max_vocab_size": 10000,
+    "embedding_dim": 100,
     "min_freq": 5,
     "batch_size": 256,
-    "num_negative_samples": 10,
+    "num_negative_samples": 5,
     "norm_factor": 0.75,
     "seed": 42,
     "learning_rate": 0.05,
     "learning_rate_start": 0.025,
     "learning_rate_min": 0.005,
     "learning_rate_warmup_ratio": 0.1,
-    "window_size": 4,
+    "window_size": 2,
     "subsample_threshold": 5e-6,
+    "remove_stopwords": True,
     "split": "train",
     "validation_split": "validation",
     "validation_every": 500,
@@ -73,7 +74,7 @@ def main():
 
     np.random.seed(hyperparams["seed"])
 
-    run_dir, latest_ckpt_dir, final_ckpt_dir = create_run_directories(checkpoint_root)
+    run_dir, latest_ckpt_dir, final_ckpt_dir, best_ckpt_dir = create_run_directories(checkpoint_root)
     start_weight_dir = resolve_start_weight_dir(
         checkpoint_root=checkpoint_root,
         run_id=args.start_weight_run_id,
@@ -120,6 +121,7 @@ def main():
             hyperparams=hyperparams,
             checkpoint_every=checkpoint_every,
             latest_ckpt_dir=latest_ckpt_dir,
+            best_ckpt_dir=best_ckpt_dir,
         )
     except PartialTrainingInterrupt as exc:
         interrupted = True
@@ -144,11 +146,15 @@ def main():
         if interrupted:
             print(f"Partial checkpoint saved (latest): {latest_ckpt_dir}")
             print(f"Partial checkpoint saved (final): {final_ckpt_dir}")
+            if validation_loss_records:
+                print(f"Best validation checkpoint available at: {best_ckpt_dir}")
             print(f"Partial loss history saved: {artifacts['loss_csv']}")
             print(f"Partial training plot saved: {artifacts['plot']}")
             print(f"Partial run summary saved: {artifacts['summary']}")
         else:
             print(f"Final checkpoint saved: {final_ckpt_dir}")
+            if validation_loss_records:
+                print(f"Best validation checkpoint saved: {best_ckpt_dir}")
             print(f"Loss history saved: {artifacts['loss_csv']}")
             print(f"Training plot saved: {artifacts['plot']}")
             print(f"Run summary saved: {artifacts['summary']}")

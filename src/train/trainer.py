@@ -54,12 +54,22 @@ def get_learning_rate(global_step, total_steps, hyperparams):
     return min_lr + (peak_lr - min_lr) * cosine
 
 
-def train_model(model, batch_gen, validation_pairs, vocab, hyperparams, checkpoint_every, latest_ckpt_dir):
+def train_model(
+    model,
+    batch_gen,
+    validation_pairs,
+    vocab,
+    hyperparams,
+    checkpoint_every,
+    latest_ckpt_dir,
+    best_ckpt_dir,
+):
     global_step = 0
     train_loss_records = []
     validation_loss_records = []
     validation_every = hyperparams.get("validation_every")
     total_steps = hyperparams["num_epochs"] * len(batch_gen)
+    best_validation_loss = None
 
     try:
         for epoch in range(hyperparams["num_epochs"]):
@@ -97,6 +107,13 @@ def train_model(model, batch_gen, validation_pairs, vocab, hyperparams, checkpoi
                         }
                     )
                     pbar.write(f"Validation loss at step {global_step}: {validation_loss:.6f}")
+                    if best_validation_loss is None or validation_loss < best_validation_loss:
+                        best_validation_loss = validation_loss
+                        model.save_embeddings(best_ckpt_dir)
+                        pbar.write(
+                            f"Best checkpoint updated at step {global_step}: "
+                            f"{best_ckpt_dir} (validation loss {validation_loss:.6f})"
+                        )
 
                 if global_step % checkpoint_every == 0:
                     model.save_embeddings(latest_ckpt_dir)

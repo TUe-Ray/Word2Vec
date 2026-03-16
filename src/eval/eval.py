@@ -139,7 +139,8 @@ def load_or_build_vocab(run_dir: Path, run_config: dict, cache_dir: Path | None 
 
     print("Saved run-specific vocab not found. Rebuilding vocab from the training split in run_config.json.")
     raw_lines = load_wikitext_raw(run_config["split"])
-    sentences = [tokenize(normalize_text(line)) for line in raw_lines]
+    remove_stopwords = run_config.get("remove_stopwords", False)
+    sentences = [tokenize(normalize_text(line), remove_stopwords=remove_stopwords) for line in raw_lines]
     vocab = build_vocab(
         sentences,
         min_freq=run_config["min_freq"],
@@ -204,11 +205,17 @@ def compute_sgns_batch_loss(
     return float(np.mean(loss_pos + loss_neg))
 
 
-def prepare_encoded_split(split: str, vocab: dict, max_sentences: int | None = None) -> list[list[int]]:
+def prepare_encoded_split(
+    split: str,
+    vocab: dict,
+    run_config: dict,
+    max_sentences: int | None = None,
+) -> list[list[int]]:
     raw_lines = load_wikitext_raw(split)
     if max_sentences is not None:
         raw_lines = raw_lines[:max_sentences]
-    sentences = [tokenize(normalize_text(line)) for line in raw_lines]
+    remove_stopwords = run_config.get("remove_stopwords", False)
+    sentences = [tokenize(normalize_text(line), remove_stopwords=remove_stopwords) for line in raw_lines]
     return encode_sentences(sentences, vocab)
 
 
@@ -220,7 +227,12 @@ def evaluate_split(
     w_context: np.ndarray,
     max_sentences: int | None = None,
 ) -> dict:
-    encoded_sentences = prepare_encoded_split(split, vocab, max_sentences=max_sentences)
+    encoded_sentences = prepare_encoded_split(
+        split,
+        vocab,
+        run_config,
+        max_sentences=max_sentences,
+    )
     pairs = generate_pairs(encoded_sentences, window_size=run_config["window_size"])
     batch_gen = SkipGramBatchGenerator(
         pairs=pairs,
