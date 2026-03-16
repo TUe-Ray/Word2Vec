@@ -1,0 +1,9 @@
+{
+  "total_steps": 20620,
+  "num_train_records": 20620,
+  "num_validation_records": 41,
+  "final_train_loss": 3.1206547642926847,
+  "best_train_loss": 2.804914403648904,
+  "final_validation_loss": 3.870413710905218,
+  "best_validation_loss": 3.870413710905218
+}
