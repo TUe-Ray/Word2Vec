@@ -25,3 +25,4 @@ test_preprocessing.py
 checkpoints/
 codex_outputs/
 _codex_analysis/
+tests/
