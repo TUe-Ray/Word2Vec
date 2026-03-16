@@ -8,7 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.preprocess import (
+from src.data_prep.preprocess import (
     prepare_training_data,
     prepare_validation_data,
 )
@@ -21,7 +21,7 @@ from src.common.utils import (
     save_vocab,
     save_training_records,
 )
-from src.data.dataset import build_batch_generator
+from src.data_prep.dataset import build_batch_generator
 from src.train.model import SkipGramModel
 from src.train.trainer import PartialTrainingInterrupt, train_model
 

@@ -112,7 +112,7 @@ def rebuild_vocab_from_project(project_root, run_config=None):
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
-    from src.data.preprocess import normalize_text, tokenize, build_vocab
+    from src.data_prep.preprocess import normalize_text, tokenize, build_vocab
     from src.common.utils import load_wikitext_raw
 
     cfg = run_config or {}

@@ -2,7 +2,7 @@ import math
 
 from tqdm import tqdm
 
-from src.data.dataset import build_validation_batch_generator
+from src.data_prep.dataset import build_validation_batch_generator
 
 
 class PartialTrainingInterrupt(KeyboardInterrupt):

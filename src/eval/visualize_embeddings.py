@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.preprocess import build_vocab, normalize_text, tokenize
+from src.data_prep.preprocess import build_vocab, normalize_text, tokenize
 from src.common.utils import load_vocab, load_wikitext_raw, save_vocab
 
 
