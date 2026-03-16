@@ -32,13 +32,6 @@ The current training pipeline is:
 6. train SGNS with unigram^0.75 negative sampling
 7. monitor both training loss and periodic validation loss during training
 
-Important implementation choices:
-
-- training is done from scratch in pure NumPy
-- `W_center` and `W_context` are both saved for each run
-- `vocab.json` is saved inside each checkpoint run for reproducible evaluation
-- post-training visualization can use `center`, `context`, or their mean, but qualitative checks should still include `W_center`
-
 ## Analysis
 
 The experiments can be summarized in three stages.
@@ -47,7 +40,7 @@ The experiments can be summarized in three stages.
 
 The earliest runs showed that subsampling and vocabulary control were not optional details. Without them, the embedding space was strongly dominated by high-frequency words, which made nearest-neighbor outputs difficult to trust.
 
-`model_1`, an early no-subsampling run, illustrates this issue clearly. The figure below is included as a diagnostic example rather than as a benchmark result.
+`model_1`, an early no-subsampling run, illustrates this issue clearly. The figure below is included as a diagnostic example.
 
 <img src="docs/readme_assets/no_subsampling_tsne_20260314_200105.png" alt="Early no-subsampling t-SNE" width="70%">
 
@@ -64,7 +57,7 @@ The heatmap below comes from a smaller custom notebook probe created after `subs
 - `king`, `queen`, `man`, `woman`
 - `cat`, `dog`
 
-It is useful as an **analysis figure**, not as a headline result. It shows that the model has learned some local structure, but it also highlights where semantic organization remains unstable.
+It shows that the model has learned some local structure, but it also highlights where semantic organization remains unstable.
 
 Observation:
 
@@ -74,12 +67,12 @@ Observation:
 
 <img src="docs/readme_assets/custom_heatmap_notebook.png" alt="Notebook custom cosine heatmap" width="70%">
 
-This stage showed that lower SGNS loss was informative, but not sufficient as a stand-alone quality criterion. Even after the training pipeline improved, nearest neighbors, analogy probes, PCA/t-SNE, and cosine heatmaps remained necessary as complementary diagnostics.
+This stage showed that lower SGNS loss was informative, but not sufficient as a stand-alone quality criterion even after the training pipeline improved.
 
 ### Stage 3: Later Run Comparison
 
 
-`model_3`, the most recent completed run in the current training pipeline, improved training stability relative to `model_2`, the earlier warm-start run. Under the newer setup, the model no longer exhibited the same near-constant cosine pattern seen in `model_2`, where many unrelated `W_center` neighbors clustered around `0.999`. This indicates that `model_3` moved away from the clearest collapse-type failure mode and produced a space that is easier to inspect.
+`model_3`, the most recent completed run in the current training pipeline, improved training stability relative to `model_2` by introducing stronger preprocessing and training controls, including stopword removal, more aggressive subsampling, and a warmup-to-decay learning-rate schedule instead of warm-start continuation. Under the newer setup, the model no longer exhibited the same near-constant cosine pattern seen in `model_2`, where many unrelated `W_center` neighbors clustered around `0.999`. This indicates that `model_3` moved away from the clearest collapse-type failure mode and produced a space that is easier to inspect.
 
 However, the qualitative result is still not fully satisfactory. In `model_3`, representative `W_center` neighbors such as `king -> used, series, said, first, known` remained too generic. `model_3` therefore improved stability without fully resolving the tendency toward broad-context or frequency-driven neighborhoods.
 
@@ -229,8 +222,6 @@ Note: `vocab_size` and `embedding_dim` passed to `SkipGramModel` must match the 
 ## Visualization
 
 The core SGNS training loop is implemented in pure NumPy. scikit-learn is used only for post-training visualization utilities (PCA/t-SNE), not for model training.
-
-The visualization script is still useful when you want reproducible, non-interactive outputs written directly from the command line, especially for comparing multiple runs or regenerating plots without opening Jupyter.
 
 Use the visualization script to inspect trained embeddings with PCA, t-SNE, and a cosine similarity heatmap:
 

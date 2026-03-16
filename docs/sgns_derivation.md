@@ -25,7 +25,7 @@ For one pair, the score is just a dot product:
 If two words should go together, we want this score to be large.
 If they should not go together, we want this score to be small or negative.
 
-## 2. The loss in human terms
+## 2. The Loss Function
 
 For one positive pair `(center, true_context)` and `K` negative samples, the loss is:
 
@@ -80,8 +80,8 @@ That means:
 From those score-level gradients, the vector gradients are just dot-product gradients:
 
 - gradient w.r.t. center vector = positive part + all negative parts
-- gradient w.r.t. positive context vector = positive score gradient times center vector
-- gradient w.r.t. negative context vector = negative score gradient times center vector
+- gradient w.r.t. positive context vector = positive score gradient * center vector
+- gradient w.r.t. negative context vector = negative score gradient * center vector
 
 That is exactly what `src/train/model.py` computes.
 
@@ -136,7 +136,6 @@ This implementation is designed for clarity, not maximum throughput.
 ### Time tradeoffs
 
 - Negative sampling is much cheaper than full softmax.
-- Full softmax would score against the whole vocabulary for every training example.
 - SGNS only scores one positive context and `K` negatives.
 
 So per training pair, the rough cost becomes proportional to:
