@@ -1,6 +1,8 @@
 import argparse
+import json
 from pathlib import Path
 import sys
+
 import numpy as np
 
 # Ensure project-root imports work even when executed from a different cwd.
@@ -26,31 +28,148 @@ from src.train.model import SkipGramModel
 from src.train.trainer import PartialTrainingInterrupt, train_model
 
 
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "default_train_config.json"
 
-DEFAULT_HYPERPARAMS = {
-    "num_epochs": 4,
-    "max_vocab_size": 10000,
-    "embedding_dim": 100,
-    "min_freq": 5,
-    "batch_size": 256,
-    "num_negative_samples": 5,
-    "norm_factor": 0.75,
-    "seed": 42,
-    "learning_rate": 0.05,
-    "learning_rate_start": 0.025,
-    "learning_rate_min": 0.005,
-    "learning_rate_warmup_ratio": 0.1,
-    "window_size": 2,
-    "subsample_threshold": 5e-6,
-    "remove_stopwords": True,
-    "split": "train",
-    "validation_split": "validation",
-    "validation_every": 500,
-    "validation_max_sentences": 200,
+CONFIG_SPECS = {
+    "num_epochs": {
+        "flags": ["--epochs", "--num-epochs"],
+        "type": int,
+        "help": "Number of training epochs",
+    },
+    "max_vocab_size": {
+        "flags": ["--max-vocab-size"],
+        "type": int,
+        "help": "Maximum vocabulary size",
+    },
+    "embedding_dim": {
+        "flags": ["--embedding-dim"],
+        "type": int,
+        "help": "Embedding dimension",
+    },
+    "min_freq": {
+        "flags": ["--min-freq"],
+        "type": int,
+        "help": "Minimum token frequency to keep in the vocabulary",
+    },
+    "batch_size": {
+        "flags": ["--batch-size"],
+        "type": int,
+        "help": "Training batch size",
+    },
+    "num_negative_samples": {
+        "flags": ["--num-negative-samples"],
+        "type": int,
+        "help": "Number of negative samples per positive pair",
+    },
+    "norm_factor": {
+        "flags": ["--norm-factor"],
+        "type": float,
+        "help": "Exponent used for the unigram negative-sampling distribution",
+    },
+    "seed": {
+        "flags": ["--seed"],
+        "type": int,
+        "help": "Random seed",
+    },
+    "learning_rate": {
+        "flags": ["--learning-rate"],
+        "type": float,
+        "help": "Peak learning rate",
+    },
+    "learning_rate_start": {
+        "flags": ["--learning-rate-start"],
+        "type": float,
+        "help": "Initial learning rate before warmup",
+    },
+    "learning_rate_min": {
+        "flags": ["--learning-rate-min"],
+        "type": float,
+        "help": "Minimum learning rate after decay",
+    },
+    "learning_rate_warmup_ratio": {
+        "flags": ["--learning-rate-warmup-ratio"],
+        "type": float,
+        "help": "Fraction of training used for learning-rate warmup",
+    },
+    "window_size": {
+        "flags": ["--window-size"],
+        "type": int,
+        "help": "Skip-gram context window size",
+    },
+    "subsample_threshold": {
+        "flags": ["--subsample-threshold"],
+        "type": float,
+        "help": "Frequent-word subsampling threshold",
+    },
+    "remove_stopwords": {
+        "flags": ["--remove-stopwords"],
+        "type": "bool",
+        "help": "Whether to remove stopwords during preprocessing",
+    },
+    "split": {
+        "flags": ["--split"],
+        "type": str,
+        "help": "Dataset split used for training",
+    },
+    "validation_split": {
+        "flags": ["--validation-split"],
+        "type": str,
+        "help": "Dataset split used for validation loss",
+    },
+    "validation_every": {
+        "flags": ["--validation-every"],
+        "type": int,
+        "help": "Evaluate validation loss every N training steps",
+    },
+    "validation_max_sentences": {
+        "flags": ["--validation-max-sentences"],
+        "type": int,
+        "help": "Maximum number of validation sentences to evaluate",
+    },
+    "checkpoint_every": {
+        "flags": ["--checkpoint-every"],
+        "type": int,
+        "help": "Save the latest checkpoint every N training steps",
+    },
 }
+
+
+def parse_bool(value: str) -> bool:
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "t", "yes", "y"}:
+        return True
+    if lowered in {"0", "false", "f", "no", "n"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
+
+
+def load_config(config_path: Path) -> dict:
+    config_path = Path(config_path)
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def add_config_override_args(parser: argparse.ArgumentParser) -> None:
+    for field, spec in CONFIG_SPECS.items():
+        arg_type = parse_bool if spec["type"] == "bool" else spec["type"]
+        parser.add_argument(
+            *spec["flags"],
+            dest=field,
+            type=arg_type,
+            default=None,
+            help=f"{spec['help']} (overrides config)",
+        )
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train Skip-gram with Negative Sampling")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG_PATH,
+        help=f"Path to training config JSON (default: {DEFAULT_CONFIG_PATH.relative_to(PROJECT_ROOT)})",
+    )
+    add_config_override_args(parser)
     parser.add_argument(
         "--start-weight-run-id",
         type=str,
@@ -66,10 +185,29 @@ def parse_args():
     )
     return parser.parse_args()
 
+
+def apply_cli_overrides(config: dict, args) -> dict:
+    updated_config = dict(config)
+
+    for field in CONFIG_SPECS:
+        value = getattr(args, field, None)
+        if value is not None:
+            updated_config[field] = value
+
+    return updated_config
+
+
+def split_training_config(config: dict) -> tuple[dict, int]:
+    training_config = dict(config)
+    checkpoint_every = training_config.pop("checkpoint_every")
+    return training_config, checkpoint_every
+
+
 def main():
     args = parse_args()
-    hyperparams = dict(DEFAULT_HYPERPARAMS)
-    checkpoint_every = 500
+    loaded_config = load_config(args.config)
+    merged_config = apply_cli_overrides(loaded_config, args)
+    hyperparams, checkpoint_every = split_training_config(merged_config)
     checkpoint_root = Path("checkpoints")
 
     np.random.seed(hyperparams["seed"])
