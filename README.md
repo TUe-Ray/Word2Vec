@@ -20,6 +20,8 @@ This project implements **Skip-gram with Negative Sampling (SGNS)** for internsh
 
 This project trains a NumPy implementation of **Skip-gram with Negative Sampling (SGNS)** on the local `wikitext-2-raw-v1` corpus.
 
+For a step-by-step mathematical derivation of the SGNS objective and gradients, see [docs/sgns_derivation.md](docs/sgns_derivation.md).
+
 The current training pipeline is:
 
 1. normalize and tokenize raw WikiText-2 lines
@@ -35,7 +37,7 @@ Important implementation choices:
 - training is done from scratch in pure NumPy
 - `W_center` and `W_context` are both saved for each run
 - `vocab.json` is saved inside each checkpoint run for reproducible evaluation
-- post-training visualization uses the mean of `W_center` and `W_context` by default because it is usually more stable than using either matrix alone
+- post-training visualization can use `center`, `context`, or their mean; the averaged embedding space is a useful probe, but qualitative checks should still include `W_center`
 
 ## Analysis
 
@@ -75,6 +77,8 @@ Takeaway:
 
 - this model is learning some semantic structure
 - but the space is still partly influenced by broad contextual overlap rather than clean lexical semantics
+
+For a short write-up of the training journey, major experiment pivots, and why some runs were useful even when the embeddings were still imperfect, see [docs/training_journey.md](docs/training_journey.md).
 
 
 ## Get Started
@@ -173,6 +177,9 @@ Each run creates a timestamped folder at `checkpoints/<run_id>/` containing:
 - `latest/`
    Contains `W_center.npy` and `W_context.npy` for the periodically updated checkpoint.
 
+- `best/`
+   Contains the checkpoint with the best validation loss seen so far during training.
+
 - `final/`
    Contains `W_center.npy` and `W_context.npy` for the final trained embeddings.
 
@@ -268,8 +275,12 @@ python -m src.eval.eval --run-id 20260314_191627 --checkpoint-subdir latest --ev
 
 ## Known Limitations
 
-- No learning-rate scheduling (constant LR only).
+- Lower SGNS loss does not automatically imply better semantic neighborhoods. Held-out loss and qualitative embedding quality can diverge.
+- The mean of `W_center` and `W_context` is not always the best semantic representation. In some runs it can hide, distort, or cancel useful structure.
+- High-frequency words can still dominate the geometry of the space through hubness and broad contextual overlap, even when subsampling is enabled.
+- Token filtering and vocabulary design still matter a lot. Small preprocessing changes can noticeably affect both validation loss and qualitative results.
 - No word similarity or analogy benchmark dataset integration yet.
+- Qualitative evaluation is still partly manual. The project does not yet include an automatic semantic early-stopping signal.
 - Training is implemented for clarity and correctness, not maximum speed.
 - The current script reads all generated skip-gram pairs in memory.
 

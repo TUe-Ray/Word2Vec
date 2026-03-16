@@ -1,0 +1,21 @@
+{
+  "num_epochs": 2,
+  "max_vocab_size": 10000,
+  "embedding_dim": 100,
+  "min_freq": 5,
+  "batch_size": 256,
+  "num_negative_samples": 5,
+  "norm_factor": 0.75,
+  "seed": 42,
+  "learning_rate": 0.02,
+  "window_size": 2,
+  "subsample_threshold": 1e-05,
+  "split": "train",
+  "validation_split": "validation",
+  "validation_every": 500,
+  "validation_max_sentences": 200,
+  "checkpoint_every": 500,
+  "start_weight_run_id": "20260315_183537_con",
+  "start_weight_subdir": "final",
+  "start_weight_dir": "checkpoints\\20260315_183537_con\\final"
+}

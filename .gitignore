@@ -22,7 +22,37 @@ data/
 test_preprocessing.py
 
 # Folders
-checkpoints/
+checkpoints/*
+# Re-include the intermediate directory so Git can traverse into it
+!checkpoints/20260314_200105_7hr/
+
+# Allow Git to descend into this specific run folder
+!checkpoints/20260314_200105_7hr/
+
+# Still ignore everything inside that run folder by default
+checkpoints/20260314_200105_7hr/*
+!checkpoints/20260314_200105_7hr/run_config.json
+!checkpoints/20260314_200105_7hr/training_loss.png
+!checkpoints/20260314_200105_7hr/final/
+!checkpoints/20260314_200105_7hr/final/**
+
+
+# Re-include the intermediate directory so Git can traverse into it
+!checkpoints/20260315_231058_bestbest/
+
+# Allow Git to descend into this specific run folder
+!checkpoints/20260315_231058_bestbest/
+
+# Still ignore everything inside that run folder by default
+checkpoints/20260315_231058_bestbest/*
+!checkpoints/20260315_231058_bestbest/run_config.json
+
+# Re-include ONLY the final/ subfolder and its contents
+!checkpoints/20260315_231058_bestbest/final/
+!checkpoints/20260315_231058_bestbest/final/**
+
+
+
 codex_outputs/
 _codex_analysis/
 tests/
