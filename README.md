@@ -16,6 +16,38 @@ This project implements **Skip-gram with Negative Sampling (SGNS)** for an inter
    - parameter updates
 - Checkpoint saving (`W_center.npy`, `W_context.npy`) and training records
 
+## Project Structure
+
+```text
+word2vec-in-numpy/
+├── train.py                          # training entry point; loads JSON config and applies CLI overrides
+├── download_dataset.py               # downloads and caches the WikiText-2 raw dataset
+├── demo_word2vec_results.ipynb       # interactive notebook for nearest neighbors and qualitative probes
+├── requirements.txt                  # Python dependencies
+├── configs/
+│   └── default_train_config.json     # default training hyperparameters
+├── src/
+│   ├── common/
+│   │   └── utils.py                  # run config saving, checkpoint helpers, dataset loading utilities
+│   ├── data_prep/
+│   │   ├── preprocess.py             # normalization, tokenization, vocabulary building, subsampling
+│   │   └── dataset.py                # skip-gram pair generation and batch sampling
+│   ├── train/
+│   │   ├── model.py                  # SGNS model, forward pass, loss, gradients, weight updates
+│   │   └── trainer.py                # training loop, validation checks, checkpointing, LR schedule
+│   └── eval/
+│       ├── eval.py                   # held-out SGNS loss and nearest-neighbor evaluation
+│       ├── visualize_embeddings.py   # PCA, t-SNE, and cosine heatmap visualization
+│       └── demo_helpers.py           # notebook helpers for exploratory analysis
+├── docs/
+│   ├── sgns_derivation.md            # derivation note for the SGNS objective and gradients
+│   ├── training_journey.md           # short write-up of the main experiment stages
+│   └── readme_assets/                # figures used in the README
+├── tests/                            # test folder for project checks
+├── checkpoints/                      # saved runs, configs, loss histories, and embeddings
+└── data/                             # cached dataset files
+```
+
 ## Methodology
 
 This project trains a NumPy implementation of **Skip-gram with Negative Sampling (SGNS)** on the local `wikitext-2-raw-v1` corpus.
@@ -142,10 +174,37 @@ Run training from the project root:
 python train.py
 ```
 
-Main hyperparameters are defined in `train.py` under `hyperparams`.
+Default training hyperparameters are defined in [configs/default_train_config.json](configs/default_train_config.json).
+`python train.py` loads that JSON config first, then applies any CLI overrides you pass.
 
 The default training configuration now includes frequent-word subsampling via `subsample_threshold`.
 Set it to `0` if you want to disable subsampling for an ablation run.
+
+Example: override a few common hyperparameters directly from the command line:
+
+```bash
+python train.py --epochs 3 --embedding-dim 50 --window-size 2 --num-negative-samples 5
+```
+
+You can also point training to a different config file:
+
+```bash
+python train.py --config configs/default_train_config.json
+```
+
+All current training hyperparameters can be overridden from the CLI, including values such as:
+
+- `--max-vocab-size`
+- `--min-freq`
+- `--batch-size`
+- `--learning-rate`
+- `--learning-rate-start`
+- `--learning-rate-min`
+- `--learning-rate-warmup-ratio`
+- `--subsample-threshold`
+- `--remove-stopwords true|false`
+- `--validation-every`
+- `--checkpoint-every`
 
 The training loop also supports periodic validation tracking:
 
@@ -173,7 +232,7 @@ If the folder or files are missing, training also falls back to fresh random ini
 Each run creates a timestamped folder at `checkpoints/<run_id>/` containing:
 
 - `run_config.json`
-   Stores training hyperparameters and checkpoint interval.
+   Stores the resolved training configuration for that run after loading the JSON config and applying any CLI overrides.
 
 - `vocab.json`
    The exact vocabulary used during training for that run.
