@@ -269,7 +269,7 @@ def plot_projection(
     plt.scatter(coords[:, 0], coords[:, 1], s=28, alpha=0.75)
 
     for idx, word in enumerate(words[:annotate_limit]):
-        plt.annotate(word, (coords[idx, 0], coords[idx, 1]), fontsize=8, alpha=0.85)
+        plt.annotate(word, (coords[idx, 0], coords[idx, 1]), fontsize=10, alpha=0.9)
 
     plt.title(title)
     plt.xlabel("Component 1")
@@ -328,8 +328,15 @@ def create_cosine_heatmap(
     normalized = l2_normalize(word_matrix[: len(heatmap_words)])
     similarity = normalized @ normalized.T
 
-    plt.figure(figsize=(max(8, len(heatmap_words) * 0.45), max(7, len(heatmap_words) * 0.45)))
-    im = plt.imshow(similarity, cmap="coolwarm", vmin=-1.0, vmax=1.0)
+    plt.figure(figsize=(max(6, len(heatmap_words) * 0.9), max(5, len(heatmap_words) * 0.9)))
+    im = plt.imshow(
+        similarity,
+        cmap="viridis",
+        vmin=-1.0,
+        vmax=1.0,
+        interpolation="nearest",
+        aspect="equal",
+    )
     plt.colorbar(im, fraction=0.046, pad=0.04, label="Cosine similarity")
     plt.xticks(range(len(heatmap_words)), heatmap_words, rotation=90)
     plt.yticks(range(len(heatmap_words)), heatmap_words)

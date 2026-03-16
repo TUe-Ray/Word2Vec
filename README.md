@@ -64,58 +64,73 @@ The current training pipeline is:
 6. train SGNS with unigram^0.75 negative sampling
 7. monitor both training loss and periodic validation loss during training
 
-## Analysis
+## Results Analysis
 
-The experiments can be summarized in three stages.
+### Early Baseline Without Subsampling
 
-### Stage 1: Early Failure Mode
+The earliest baseline made it clear that subsampling and vocabulary control were not optional. Without them, the embedding space became heavily dominated by high-frequency words, which made nearest-neighbor outputs difficult to trust.
 
-The earliest runs showed that subsampling and vocabulary control were not optional details. Without them, the embedding space was strongly dominated by high-frequency words, which made nearest-neighbor outputs difficult to trust.
+`model_1`, an early no-subsampling run, illustrates this issue clearly. To keep the comparison fair, the `model_1` and `model_2` figures below use the same 40-word representative subset for t-SNE and the same six-word probe set for the cosine heatmap: `king`, `queen`, `man`, `woman`, `cat`, and `dog`.
 
-`model_1`, an early no-subsampling run, illustrates this issue clearly. The figure below is included as a diagnostic example.
-
-<img src="docs/readme_assets/no_subsampling_tsne_20260314_200105.png" alt="Early no-subsampling t-SNE" width="70%">
+<table>
+  <colgroup>
+    <col style="width: 60%;">
+    <col style="width: 40%;">
+  </colgroup>
+  <tr>
+    <td align="center"><strong>40-word t-SNE</strong></td>
+    <td align="center"><strong>Small probe heatmap</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme_assets/model_1_tsne40/mean_latest_tsne.png" alt="model_1 40-word t-SNE" width="100%"></td>
+    <td><img src="docs/readme_assets/model_1_probe/mean_latest_cosine_heatmap.png" alt="model_1 small probe heatmap" width="100%"></td>
+  </tr>
+</table>
 
 Observation:
 
 - the space is not cleanly separated into intuitive semantic groups
-- several words that should feel more distinct still occupy a broadly mixed layout
-- this was an early indication that frequent-word dominance had to be addressed before nearest-neighbor analysis could be trusted
+- in the heatmap, some local relationships are plausible, such as `man-woman` and `cat-dog` being relatively close
+- however, the overall structure is still too mixed: `queen` is also very close to `dog`, and `king` remains too close to almost every other word in the probe
+- this was an early sign that frequent-word dominance had to be addressed before nearest-neighbor analysis could be taken seriously
 
-### Stage 2: Improved Pipeline, But Imperfect Semantics
+Taken together, these two figures suggest that the early pipeline was not yet producing a usable semantic space. The t-SNE projection is visually cluttered, and the geometry seems to be driven more by broad frequency effects than by clear semantic grouping. The small probe heatmap also shows a mixture of reasonable and unreasonable relationships: a few intuitive pairs appear, but unrelated words are still pulled together too strongly. At this stage, the main value of the run was diagnostic. It made the failure mode visible enough to justify later changes in preprocessing and training control.
 
-The heatmap below comes from a smaller custom notebook probe created after `subsampling` had already been introduced into the training pipeline. It uses:
+### Controlled Training With Clearer Local Structure
 
-- `king`, `queen`, `man`, `woman`
-- `cat`, `dog`
+`model_2` represents a later training setup in which subsampling, validation tracking, and a more controlled configuration had already been introduced. The figures below use the same visualization pipeline, the same 40-word representative subset for t-SNE, and the same six-word probe set for the heatmap as `model_1`, so that the comparison remains fair.
 
-It shows that the model has learned some local structure, but it also highlights where semantic organization remains unstable.
+<table>
+  <colgroup>
+    <col style="width: 60%;">
+    <col style="width: 40%;">
+  </colgroup>
+  <tr>
+    <td align="center"><strong>40-word t-SNE</strong></td>
+    <td align="center"><strong>Small probe heatmap</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme_assets/model_2_tsne40/mean_final_tsne.png" alt="model_2 40-word t-SNE" width="100%"></td>
+    <td><img src="docs/readme_assets/model_2_probe/mean_final_cosine_heatmap.png" alt="model_2 small probe heatmap" width="100%"></td>
+  </tr>
+</table>
 
 Observation:
 
-- `king` is close to `man`, and `cat` is close to `dog`, which suggests that some local structure has been learned
-- however, the royalty cluster is still not cleanly separated from the animal pair
-- this indicates that broad contextual similarity is still interfering with cleaner lexical semantics
+- the geometry is more structured than in `model_1`, which suggests that the updated pipeline reduced the most obvious failure mode
+- in the heatmap, `king-man`, `man-woman`, and `cat-dog` are all very close, showing stronger local structure than in `model_1`
+- however, the probe still reveals a clear semantic problem: `queen` is grouped more closely with `cat` and `dog` than with `king` or `woman`
+- this is why the project treats better loss and cleaner qualitative geometry as related but not interchangeable signals
 
-<img src="docs/readme_assets/custom_heatmap_notebook.png" alt="Notebook custom cosine heatmap" width="70%">
-
-This stage showed that lower SGNS loss was informative, but not sufficient as a stand-alone quality criterion even after the training pipeline improved.
-
-### Stage 3: Later Run Comparison
-
-
-`model_3`, the most recent completed run in the current training pipeline, improved training stability relative to `model_2` by introducing stronger preprocessing and training controls, including stopword removal, more aggressive subsampling, and a warmup-to-decay learning-rate schedule instead of warm-start continuation. Under the newer setup, the model no longer exhibited the same near-constant cosine pattern seen in `model_2`, where many unrelated `W_center` neighbors clustered around `0.999`. This indicates that `model_3` moved away from the clearest collapse-type failure mode and produced a space that is easier to inspect.
-
-However, the qualitative result is still not fully satisfactory. In `model_3`, representative `W_center` neighbors such as `king -> used, series, said, first, known` remained too generic. `model_3` therefore improved stability without fully resolving the tendency toward broad-context or frequency-driven neighborhoods.
+Compared with `model_1`, `model_2` is clearly more interpretable. The t-SNE projection is less chaotic, and the six-word probe heatmap shows stronger local structure. At the same time, the comparison remains useful precisely because it is still imperfect: some relationships improved, but others became organized in the wrong way. This later setup therefore showed that lower SGNS loss was meaningful, but not sufficient as a stand-alone criterion for semantic quality, even after the training pipeline had improved.
 
 Overall conclusion:
 
-- the project now produces embeddings that are easier to inspect and compare than the earliest runs
-- the most recent pipeline is a real improvement over the strongest collapse-type failure modes
-- however, the learned space still shows substantial frequency bias and generic-context bias, so qualitative diagnostics remain necessary
+- the project moved from an obviously unstable early embedding space to a more interpretable later one
+- the comparison between `model_1` and `model_2` shows that preprocessing and training controls made a real difference
+- however, the later stage still does not justify treating loss as a direct measure of semantic quality, so qualitative diagnostics remain necessary
 
 For a short write-up of the training journey, major experiment pivots, and why some runs were useful even when the embeddings were still imperfect, see [docs/training_journey.md](docs/training_journey.md).
-
 
 ## Get Started
 
