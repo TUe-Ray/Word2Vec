@@ -20,5 +20,8 @@ data/
 
 # File
 test_preprocessing.py
+
+# Folders
 checkpoints/
 codex_outputs/
+_codex_analysis/

@@ -28,17 +28,20 @@ from src.train.trainer import train_model
 
 
 DEFAULT_HYPERPARAMS = {
-    "num_epochs": 2,
-    "max_vocab_size": 10000,
-    "embedding_dim": 100,
+    "num_epochs": 10,
+    "max_vocab_size": 20000,
+    "embedding_dim": 200,
     "min_freq": 5,
     "batch_size": 256,
-    "num_negative_samples": 5,
+    "num_negative_samples": 10,
     "norm_factor": 0.75,
     "seed": 42,
-    "learning_rate": 0.02,
-    "window_size": 2,
-    "subsample_threshold": 1e-5,
+    "learning_rate": 0.05,
+    "learning_rate_start": 0.025,
+    "learning_rate_min": 0.005,
+    "learning_rate_warmup_ratio": 0.1,
+    "window_size": 4,
+    "subsample_threshold": 5e-6,
     "split": "train",
     "validation_split": "validation",
     "validation_every": 500,
@@ -99,6 +102,8 @@ def main():
     )
     maybe_load_start_weights(model, start_weight_dir)
 
+    if args.start_weight_run_id:
+        print(f"✓ Successfully continuing training from checkpoint: {args.start_weight_run_id}")
     print(f"Model initialized with vocab size {model.vocab_size} and embedding dimension {model.embedding_dim}")
     print("start model training")
     train_loss_records = []

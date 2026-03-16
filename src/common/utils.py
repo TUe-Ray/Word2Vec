@@ -208,36 +208,63 @@ def save_training_records(
         steps = [row["global_step"] for row in loss_records]
         losses = [row["loss"] for row in loss_records]
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(steps, losses, label="Batch loss", alpha=0.5, linewidth=1)
+        fig, ax_train = plt.subplots(figsize=(10, 5))
+        legend_lines = []
+        legend_labels = []
+
+        line = ax_train.plot(
+            steps,
+            losses,
+            label="Batch loss",
+            alpha=0.5,
+            linewidth=1,
+            color="tab:blue",
+        )[0]
+        legend_lines.append(line)
+        legend_labels.append(line.get_label())
 
         smooth_window = min(200, len(losses))
         if smooth_window >= 5:
             kernel = np.ones(smooth_window, dtype=np.float64) / smooth_window
             smooth_losses = np.convolve(losses, kernel, mode="valid")
             smooth_steps = steps[smooth_window - 1 :]
-            plt.plot(smooth_steps, smooth_losses, label=f"Moving average ({smooth_window})", linewidth=2)
+            line = ax_train.plot(
+                smooth_steps,
+                smooth_losses,
+                label=f"Training moving average ({smooth_window})",
+                linewidth=2,
+                color="tab:orange",
+            )[0]
+            legend_lines.append(line)
+            legend_labels.append(line.get_label())
 
         if validation_loss_records:
             validation_steps = [row["global_step"] for row in validation_loss_records]
             validation_losses = [row["loss"] for row in validation_loss_records]
-            plt.plot(
+            ax_val = ax_train.twinx()
+            line = ax_val.plot(
                 validation_steps,
                 validation_losses,
                 label="Validation loss",
                 linewidth=2,
                 marker="o",
                 markersize=3,
-            )
+                color="tab:red",
+            )[0]
+            ax_val.set_ylabel("Validation loss", color="tab:red")
+            ax_val.tick_params(axis="y", labelcolor="tab:red")
+            legend_lines.append(line)
+            legend_labels.append(line.get_label())
 
-        plt.title("Training Loss Curve")
-        plt.xlabel("Global step")
-        plt.ylabel("Loss")
-        plt.grid(alpha=0.3)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(plot_path, dpi=200)
-        plt.close()
+        ax_train.set_title("Training and Validation Loss")
+        ax_train.set_xlabel("Global step")
+        ax_train.set_ylabel("Training loss", color="tab:blue")
+        ax_train.tick_params(axis="y", labelcolor="tab:blue")
+        ax_train.grid(alpha=0.3)
+        ax_train.legend(legend_lines, legend_labels, loc="upper right")
+        fig.tight_layout()
+        fig.savefig(plot_path, dpi=200)
+        plt.close(fig)
 
         summary = {
             "total_steps": global_step,
