@@ -23,7 +23,7 @@ from src.common.utils import (
 )
 from src.data.dataset import build_batch_generator
 from src.train.model import SkipGramModel
-from src.train.trainer import train_model
+from src.train.trainer import PartialTrainingInterrupt, train_model
 
 
 
@@ -121,6 +121,12 @@ def main():
             checkpoint_every=checkpoint_every,
             latest_ckpt_dir=latest_ckpt_dir,
         )
+    except PartialTrainingInterrupt as exc:
+        interrupted = True
+        train_loss_records = exc.train_loss_records
+        validation_loss_records = exc.validation_loss_records
+        global_step = exc.global_step
+        print("\nTraining interrupted by user. Saving partial progress...")
     except KeyboardInterrupt:
         interrupted = True
         print("\nTraining interrupted by user. Saving partial progress...")
